@@ -61,4 +61,9 @@ Write-Host "      }"
 Write-Host "    }"
 Write-Host "  }"
 Write-Host ""
+Write-Host "Note: 'read_messages' requires access to OpenClaw transcript files." -ForegroundColor DarkYellow
+Write-Host "      On Windows this tool is unavailable unless you mount the server's" -ForegroundColor DarkYellow
+Write-Host "      transcript directory and set OPENCLAW_TRANSCRIPTS_DIR env var." -ForegroundColor DarkYellow
+Write-Host "      Other tools (chat, send_message, list_sessions, etc.) work fine." -ForegroundColor DarkYellow
+Write-Host ""
 Write-Host "Uninstall: Remove-Item -Recurse '$InstallDir'"

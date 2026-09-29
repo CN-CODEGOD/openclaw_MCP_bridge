@@ -39,6 +39,8 @@ def _headers() -> dict:
 
 def _find_transcript(session_key: str) -> str | None:
     agents_dir = Path(TRANSCRIPTS_DIR)
+    if not agents_dir.exists():
+        return None
     for agent_dir in agents_dir.iterdir():
         sessions_file = agent_dir / "sessions" / "sessions.json"
         if not sessions_file.exists():
@@ -152,11 +154,18 @@ async def list_sessions(limit: int = 20) -> str:
     }, indent=2, ensure_ascii=False)
 
 
-@mcp.tool(description="Read recent messages from an OpenClaw agent session transcript.")
+@mcp.tool(description="Read recent messages from an OpenClaw agent session transcript. Only works on the server where OpenClaw runs (needs local file access).")
 async def read_messages(session_key: str, limit: int = 20) -> str:
+    agents_dir = Path(TRANSCRIPTS_DIR)
+    if not agents_dir.exists():
+        return json.dumps({
+            "error": "Transcript directory not accessible",
+            "detail": f"Path '{TRANSCRIPTS_DIR}' does not exist on this machine. read_messages only works on the server where OpenClaw is running.",
+            "hint": "Set OPENCLAW_TRANSCRIPTS_DIR env var to the correct path, or use this tool from the OpenClaw host machine.",
+        }, ensure_ascii=False)
     path = _find_transcript(session_key)
     if not path:
-        return json.dumps({"error": f"Transcript not found for session: {session_key}"})
+        return json.dumps({"error": f"Transcript not found for session: {session_key}"}, ensure_ascii=False)
     messages = _parse_transcript(path, limit)
     if not messages:
         return json.dumps({"error": f"No messages found in session: {session_key}"})

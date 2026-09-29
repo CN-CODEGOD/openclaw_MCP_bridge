@@ -226,23 +226,33 @@ async def chat(message: str, agent_id: str = "main") -> str:
 
 @mcp.tool(description="List all configured OpenClaw agents with their names, models, and workspaces.")
 async def list_agents() -> str:
-    config_path = Path("/opt/openclaw/config/openclaw.json")
-    if not config_path.exists():
-        return json.dumps({"error": "Config not found"})
-    with open(config_path) as f:
-        config = json.load(f)
-    agents = config.get("agents", {}).get("list", [])
-    return json.dumps({
-        "agents": [
-            {
-                "id": a.get("id"),
-                "name": a.get("name"),
-                "model": a.get("model"),
-                "default": a.get("default", False),
-            }
-            for a in agents
-        ],
-    }, indent=2, ensure_ascii=False)
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(f"{GATEWAY_URL}/v1/models", headers=_headers())
+        if resp.status_code != 200:
+            config_path = Path("/opt/openclaw/config/openclaw.json")
+            if config_path.exists():
+                with open(config_path) as f:
+                    config = json.load(f)
+                agents = config.get("agents", {}).get("list", [])
+                return json.dumps({
+                    "agents": [
+                        {"id": a.get("id"), "name": a.get("name"), "model": a.get("model"), "default": a.get("default", False)}
+                        for a in agents
+                    ],
+                }, indent=2, ensure_ascii=False)
+            return json.dumps({"error": "Could not retrieve agents list"})
+        data = resp.json()
+
+    models = data.get("data", [])
+    agents = []
+    for m in models:
+        mid = m.get("id", "")
+        if mid.startswith("openclaw/") and mid not in ("openclaw/default",):
+            agent_id = mid.replace("openclaw/", "")
+            agents.append({"id": agent_id, "model_target": mid})
+        elif mid == "openclaw":
+            agents.append({"id": "default", "model_target": mid, "default": True})
+    return json.dumps({"agents": agents}, indent=2, ensure_ascii=False)
 
 
 @mcp.tool(description="Check if the OpenClaw Gateway is reachable and responsive.")

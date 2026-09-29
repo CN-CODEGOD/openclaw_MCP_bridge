@@ -1,13 +1,13 @@
 # OpenClaw MCP Bridge
 
-一个简单的 MCP Server，让外部 MCP 客户端（Codex、Claude Code 等）能够与 OpenClaw Agent Session 交互。
+一个简单的 MCP Server，让外部 MCP 客户端（Codex、Claude Code、Qwen Code 等）能够与 OpenClaw Agent Session 交互。
 
 ## 架构
 
 ```
-MCP Client (Codex/Claude Code/etc.)
+MCP Client (Codex/Claude Code/Qwen Code)
     ↓ MCP (stdio)
-OpenClaw MCP Bridge (server.py)
+OpenClaw MCP Bridge
     ↓ HTTP
 OpenClaw Gateway (Docker:18789)
     ↓
@@ -25,43 +25,91 @@ OpenClaw Agent Sessions
 | `list_agents` | 列出所有配置的 Agent |
 | `health_check` | 检查 Gateway 连通性 |
 
-## 快速开始
+## 安装
+
+### Linux / macOS
 
 ```bash
-cd /root/openclaw-mcp-bridge
-.venv/bin/python server.py
+tar xzf openclaw-mcp-bridge-0.1.0.tar.gz
+bash install.sh
 ```
 
-## 在 MCP 客户端中配置
+默认安装到 `~/.openclaw-mcp-bridge/`，也可指定路径：
 
-### Codex / Claude Code
+```bash
+bash install.sh /custom/path
+```
 
-在 MCP 配置文件中添加：
+### Windows (PowerShell)
 
+```powershell
+tar xzf openclaw-mcp-bridge-0.1.0.tar.gz
+pwsh .\install.ps1
+```
+
+默认安装到 `%USERPROFILE%\.openclaw-mcp-bridge\`，也可指定路径：
+
+```powershell
+pwsh .\install.ps1 -InstallDir "D:\tools\openclaw-bridge"
+```
+
+> 需要 Python 3.10+ 已安装（`python`、`python3` 或 `py` 任一命令可用）。
+
+### 手动安装
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install dist/openclaw_mcp_bridge-0.1.0-py3-none-any.whl
+```
+
+## 配置 MCP 客户端
+
+安装脚本会输出配置模板，复制到你用的 MCP 客户端的 settings 中即可。
+
+### Qwen Code
+
+在 `~/.qwen/settings.json` 的 `mcpServers` 中添加：
+
+**Linux:**
 ```json
 {
-  "mcpServers": {
-    "openclaw-bridge": {
-      "command": "/root/openclaw-mcp-bridge/.venv/bin/python",
-      "args": ["/root/openclaw-mcp-bridge/server.py"],
-      "env": {
-        "OPENCLAW_GATEWAY_URL": "http://localhost:18789",
-        "OPENCLAW_GATEWAY_TOKEN": "your-gateway-token"
-      }
+  "openclaw-bridge": {
+    "command": "/home/user/.openclaw-mcp-bridge/.venv/bin/openclaw-mcp-bridge",
+    "env": {
+      "OPENCLAW_GATEWAY_URL": "http://<gateway-host>:18789",
+      "OPENCLAW_GATEWAY_TOKEN": "<your-token>"
     }
   }
 }
 ```
 
-### Qwen Code
-
-在 `.qwen/settings.json` 的 `mcp.servers` 中添加：
-
+**Windows:**
 ```json
 {
   "openclaw-bridge": {
-    "command": "/root/openclaw-mcp-bridge/.venv/bin/python",
-    "args": ["/root/openclaw-mcp-bridge/server.py"]
+    "command": "C:/Users/user/.openclaw-mcp-bridge/.venv/Scripts/openclaw-mcp-bridge.exe",
+    "env": {
+      "OPENCLAW_GATEWAY_URL": "http://<gateway-host>:18789",
+      "OPENCLAW_GATEWAY_TOKEN": "<your-token>"
+    }
+  }
+}
+```
+
+### Codex / Claude Code
+
+MCP 配置文件中添加：
+
+```json
+{
+  "mcpServers": {
+    "openclaw-bridge": {
+      "command": "openclaw-mcp-bridge",
+      "env": {
+        "OPENCLAW_GATEWAY_URL": "http://<gateway-host>:18789",
+        "OPENCLAW_GATEWAY_TOKEN": "<your-token>"
+      }
+    }
   }
 }
 ```
@@ -71,7 +119,7 @@ cd /root/openclaw-mcp-bridge
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `OPENCLAW_GATEWAY_URL` | `http://localhost:18789` | Gateway 地址 |
-| `OPENCLAW_GATEWAY_TOKEN` | (内置) | Gateway 认证 Token |
+| `OPENCLAW_GATEWAY_TOKEN` | (无，必填) | Gateway 认证 Token |
 | `OPENCLAW_TRANSCRIPTS_DIR` | `/opt/openclaw/config/agents` | Transcript 文件目录 |
 | `OPENCLAW_TIMEOUT` | `120` | HTTP 请求超时（秒） |
 
@@ -91,3 +139,9 @@ cd /root/openclaw-mcp-bridge
    }
    ```
 3. Transcript 文件可访问（Docker 挂载到宿主机）
+   > 远程客户端（如 Windows）如果无法直接访问 transcript 目录，`read_messages` 工具将不可用，其余工具正常工作。
+
+## 卸载
+
+**Linux:** `rm -rf ~/.openclaw-mcp-bridge`
+**Windows:** `Remove-Item -Recurse "$HOME\.openclaw-mcp-bridge"`
